@@ -15,22 +15,69 @@ import edu.wpi.first.util.struct.StructSerializable;
 import edu.wpi.first.wpilibj.smartdashboard.SendableBuilderImpl;
 
 public class EZLogger {
-    private static HashMap<LogTable, Loggable> loggables = new HashMap<>();
+    private static HashMap<LogAccess, Loggable> loggables = new HashMap<>();
     private static HashMap<String, Sendable> sendables = new HashMap<>();
     private static HashMap<String, Struct<?>> registeredSchema = new HashMap<>();
+    private static HashMap<String, Number> innerNumbers = new HashMap<>();
+    private static HashMap<String, Boolean> innerBooleans = new HashMap<>();
+    private static HashMap<String, String> innerStrings = new HashMap<>();
+    private static HashMap<String, Sendable> innerSendables = new HashMap<>();
+    private static HashMap<String, StructSerializable>  innerSerializables = new HashMap<>();
+    private static HashMap<String, StructSerializable[]> innerSerializablesArray = new HashMap<>();
+    private static LogAccess innerAccess = new LogAccess("");
+    private static Loggable innerLoggable = new Loggable() {
+        public void log(LogAccess table) {
+            for (String key : innerNumbers.keySet()) {
+                table.put(key, innerNumbers.get(key));
+            }
+            for (String key : innerBooleans.keySet()) {
+                table.put(key, innerBooleans.get(key));
+            }
+            for (String key : innerStrings.keySet()) {
+                table.put(key, innerStrings.get(key));
+            }
+            for (String key : innerSendables.keySet()) {
+                table.put(key, innerSendables.get(key));
+            }
+            for (String key: innerSendables.keySet()) {
+                table.put(key, innerSendables.get(key));
+            }
+            for (String key : innerSerializablesArray.keySet()) {
+                table.put(key, innerSerializablesArray.get(key));
+            }
+        }
+    };
+
+    static {
+        loggables.put(innerAccess, innerLoggable);
+    }
 
     public static void periodic() {
-        for (LogTable key : loggables.keySet()) {
+        for (LogAccess key : loggables.keySet()) {
             loggables.get(key).log(key);
         }
     }
 
-    public static void registerLoggable(String name, Loggable toLog) {
-        loggables.put(new LogTable(name), toLog);
+    public static void put(String name, Loggable toLog) {
+        loggables.put(new LogAccess(name), toLog);
     }
 
+    public static void put(String key, Sendable value) {
+        innerSendables.put(key, value);
+    }
+
+    public static <T extends StructSerializable> void put(String key, T value) {
+        innerSerializables.put(key, value);
+    }
+    
+    @SuppressWarnings("unchecked")
+    public static <T extends StructSerializable> void put(String key, T... value) {
+        innerSerializablesArray.put(key, value);
+    }
+
+
     public static interface Loggable {
-        public void log(LogTable table);
+        public void log(LogAccess table);
     }
 
     private static Struct<?> findStructType(Class<?> classObj) {
@@ -49,10 +96,10 @@ public class EZLogger {
         return registeredSchema.get(classObj.getName());
     }
 
-    public static class LogTable {
+    public static class LogAccess {
         private NetworkTable table;
         private String name;
-        public LogTable(String name) {
+        public LogAccess(String name) {
             table = NetworkTableInstance.getDefault().getTable("EZLogger").getSubTable(name);
             this.name = name;
         }
@@ -70,7 +117,7 @@ public class EZLogger {
         }
 
         public void put(String key, Loggable value) {
-            value.log(new LogTable(name + "/" + key));
+            value.log(new LogAccess(name + "/" + key));
         }
 
         public void put(String key, Sendable value) {
